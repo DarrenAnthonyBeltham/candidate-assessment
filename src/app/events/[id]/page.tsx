@@ -2,27 +2,37 @@ import prisma from '@/app/lib/db';
 import LocalTime from '../../components/LocalTime';
 import BookingForm from './BookingForm';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/lib/auth';
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
+  const isAdmin = (session?.user as any)?.role === 'ADMIN';
+
   const event = await prisma.event.findUnique({
     where: { id },
-    include: { 
-      timeSlots: true,
-      creator: true 
-    }
+    include: { timeSlots: true, creator: true }
   });
 
   if (!event) notFound();
 
   return (
     <div className="p-3 pb-5">
-      <div className="d-flex align-items-center gap-2 mb-3">
-        <h1 className="h4 fw-bold m-0">{event.title}</h1>
-        {event.isRecurring && (
-          <span className="badge rounded-pill bg-info-subtle text-info border border-info small">
-            Series
-          </span>
+      <div className="d-flex justify-content-between align-items-start mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <h1 className="h4 fw-bold m-0">{event.title}</h1>
+          {event.isRecurring && (
+            <span className="badge rounded-pill bg-info-subtle text-info border border-info small">
+              Series
+            </span>
+          )}
+        </div>
+        {isAdmin && (
+          <Link href={`/events/${event.id}/edit`} className="btn btn-sm btn-outline-secondary rounded-pill fw-bold">
+            Edit
+          </Link>
         )}
       </div>
 
