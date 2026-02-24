@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum WaitListStatus {
+  PENDING
+  PROMOTED
+  EXPIRED
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  name              String?
+  passwordHash      String
+  role              Role      @default(USER)
+  timezone          String    @default("UTC")
+  preferences       String[]  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  bookings          Booking[]
+  waitlistEntries   Waitlist[]
+  createdEvents     Event[]   @relation("EventCreator")
+}
+
+model Event {
+  id          String     @id @default(uuid())
+  title       String
+  description String
+  location    String
+  category    String
+  creatorId   String
+  seriesId    String?    
+  isRecurring Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  creator     User       @relation("EventCreator", fields: [creatorId], references: [id])
+  timeSlots   TimeSlot[]
+
+  @@index([category])
+  @@index([creatorId])
+  @@index([seriesId])
+}
+
+model TimeSlot {
+  id                String     @id @default(uuid())
+  eventId           String
+  startTime         DateTime
+  endTime           DateTime
+  capacity          Int
+  remainingCapacity Int
+  version           Int        @default(1)
+  
+  event             Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bookings          Booking[]
+  waitlist          Waitlist[]
+
+  @@index([eventId])
+  @@index([startTime])
+}
+
+model Booking {
+  id         String   @id @default(uuid())
+  userId     String
+  timeSlotId String
+  spots      Int
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id])
+  timeSlot   TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timeSlotId])
+  @@unique([userId, timeSlotId])
+}
+
+model Waitlist {
+  id          String          @id @default(uuid())
+  userId      String
+  timeSlotId  String
+  spots       Int
+  status      WaitListStatus  @default(PENDING)
+  isRead      Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeSlot    TimeSlot        @relation(fields: [timeSlotId], references: [id])
+}
